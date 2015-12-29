@@ -17,8 +17,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 Ths program takes an Illumina samplesheet (old style, v1.8) and a config file (aka gerald.txt), and compares them to
 make sure everything matches up.
-'''
 
+'''
 
 import re, sys, optparse, os
 
