@@ -16,23 +16,26 @@ parser.add_argument("destdir", help="dest directory")
 
 options=parser.parse_args()
 
+prefixlen=len(options.fromdir)
+
 for d, dirs, files in os.walk(options.fromdir):
   
-  print "creating %s" % options.destdir
-  if not options.dryrun: os.mkdir("%s" % (options.destdir))
+  dd=options.destdir+d[prefixlen:]
+  print "creating %s" % dd 
+  if not options.dryrun: os.mkdir(dd)
   for f in files:
       ff="%s/%s" % (d, f)
 
       if f.endswith(".qp"):
           quipfile=True
           if options.compress:
-              tf="%s/%s" % (options.destdir, f[:-3]+".gz")
+              tf="%s/%s" % (dd, f[:-3]+".gz")
           else:
-              tf="%s/%s" % (options.destdir, f[:-3]+".txt")
+              tf="%s/%s" % (dd, f[:-3]+".txt")
       else:
           if not options.all: continue
           quipfile=False
-          tf="%s/%s" % (options.destdir, f)
+          tf="%s/%s" % (dd, f)
 
       print "converting %s -> %s" % (ff, tf)
       if options.dryrun: continue
