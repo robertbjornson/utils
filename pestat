@@ -224,13 +224,13 @@ BEGIN {
 			statecolor=NORMAL
 		}
 		# Flag unexpected CPU load average
-		loaddiff = cpuload - cpulist[1]
-		if (loaddiff > 2 || loaddiff < -2) {
+		loadratio = cpuload/(cpulist[1] + 0.001)
+		if (loadratio > 4 || loadratio < 0.25) {
 			loadflag="*"
 			loadcolor=RED
 			cpucolor=GREEN
 			listnode++
-		} else if (loaddiff > 0.5 || loaddiff < -0.5) {
+		} else if (loadratio > 2 || loadratio < 0.5) {
 			loadflag="*"
 			loadcolor=MAGENTA
 			cpucolor=GREEN
