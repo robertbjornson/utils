@@ -84,14 +84,15 @@ def genFunc(lane, fp):
         return base
     return doit
 
-def seqReader(lane, start_cycles, cycles, tile, basecalls, compressed):
+def seqReader(lane, start_cycles, cycles, tilepat, tile, basecalls, compressed):
 
     funclist=[]
 
     for idx in range(len(start_cycles)):
         for c in range(start_cycles[idx], start_cycles[idx]+cycles[idx]):
             if not compressed:
-                fp=open('%s/L00%s/C%d.1/s_%s_%s.bcl'%(basecalls, lane, c, lane, tile), 'rb')
+                #fp=open('%s/L00%s/C%d.1/s_%s_%s.bcl'%(basecalls, lane, c, lane), 'rb')
+                fp=open(tilepat% locals())
             else:
                 fp=gzip.open('%s/L00%s/C%d.1/s_%s_%s.bcl.gz'%(basecalls, lane, c, lane, tile), 'rb')
             fp.read(4) # skip count
@@ -148,6 +149,7 @@ if __name__=='__main__':
     parser.add_argument("-c", "--startcycle", dest="start_cycles_str", required=True, type=str, help="first barcode cycles")
     parser.add_argument("-n", "--numcycles", dest="num_cycles_str", type=str, required=True, help="number of barcode cycles")
     parser.add_argument("-t", "--tile", dest="tile", default="1101", help="Tile to use, default %(default)s")
+    parser.add_argument("--tilepat", dest="tilepat", default="%(basecalls)s/L00%(lane)s/C%(c)d.1/s_%(lane)s_%(tile)s.bcl", help="Tile to use, default %(default)s")
     parser.add_argument("-m", "--maxtags", dest="maxtags", default=10, type=int, help="maximum tags to report, default %(default)s")
     parser.add_argument("-l", "--lanes", dest="lanes", default='12345678', type=str, help="lanes to check, default %(default)s")
     parser.add_argument("--numreads", dest="numreads", default=100000, type=int, help="maximum # reads to consult, default %(default)s")
@@ -178,7 +180,7 @@ if __name__=='__main__':
         tags={}
         total=0
 
-        for tag in seqReader(lane, start_cycles, num_cycles, options.tile, options.basecalls, options.compressed):
+        for tag in seqReader(lane, start_cycles, num_cycles, options.tilepat, options.tile, options.basecalls, options.compressed):
             total+=1
             if tag not in tags:
                 tags[tag]=1
