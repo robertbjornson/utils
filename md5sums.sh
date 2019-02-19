@@ -1,12 +1,7 @@
 #!/bin/bash
 
-# to create sum files for all fastq's 
-# cd to the Unaligned dir(s) and run this script 
-set -x
+#SBATCH -c 16
 
-for f in $(find . -name "*.fastq.gz" -print)
-do
-  mdfile=${f/fastq.gz/md5sum}
-  md5sum $f > $mdfile
-done
+module load parallel
 
+parallel -j ${SLURM_CPUS_PER_TASK} --plus "echo {}; md5sum {} > {/fastq.gz/md5sum.new}" ::: $(find . -name "*.fastq.gz" -print)
