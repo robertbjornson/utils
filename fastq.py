@@ -3,7 +3,7 @@ import sys, gzip
 
 def fastqReader(fn):
     if fn=='-':
-	fp=sys.stdin
+        fp=sys.stdin
     else:
         try:
             # test to see if it's compressed

@@ -1,5 +1,5 @@
 
-import sys, numpy
+import sys, numpy, argparse
 import fasta, fastq
 
 def fastaHandler(files):
@@ -15,23 +15,43 @@ def fastqHandler(files):
             yield len(seq)
     
 if __name__=='__main__':
-    type=sys.argv[1]
-    files=sys.argv[2:]
 
-    scnt=bcnt=0
-    lens=[]
-    
-    if type=="-a":
-        h=fastaHandler(files)
-    elif type=="-q":
-        h=fastqHandler(files)
+    parser=argparse.ArgumentParser(formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("-c", "--combine", dest="combine", action="store_true", default=False, help="combine counts")
+    parser.add_argument("-t", "--type", dest="type", default="q", help="input file type (a=fasta, q=fastq)")
+    parser.add_argument("files", nargs=argparse.REMAINDER)
+
+    options=parser.parse_args()
+
+    print(options)
+
+    print ("\tseqs\tbases\tmax\tmin\tmean\tmedian")
+
+    if options.type=="a":
+        h=fastaHandler
+    elif options.type=="q":
+        h=fastqHandler
     else:
         raise Exception("Unknown type")
 
-    for l in h:
-        scnt+=1
-        bcnt+=l
-        lens.append(l)
+    if options.combine:
+        scnt=bcnt=0
+        lens=[]
+        for l in h(options.files):
+            scnt+=1
+            bcnt+=l
+            lens.append(l)
         
-    print "seqs %d bases %d max %d min %d mean %d median %d" % (scnt, bcnt, numpy.max(lens), numpy.min(lens), numpy.mean(lens), numpy.median(lens))
+        print ("Combined\t%d\t%d\t%d\t%d\t%d\t%d" % (scnt, bcnt, numpy.max(lens), numpy.min(lens), numpy.mean(lens), numpy.median(lens)))
+    else:
+        for f in options.files:
+            scnt=bcnt=0
+            lens=[]
+            for l in h([f,]):
+                scnt+=1
+                bcnt+=l
+                lens.append(l)
+
+            print ("%s\t%d\t%d\t%d\t%d\t%d\t%d" % (f, scnt, bcnt, numpy.max(lens), numpy.min(lens), numpy.mean(lens), numpy.median(lens)))
+            
     
