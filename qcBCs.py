@@ -19,56 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os, sys, argparse, struct, operator, textwrap, gzip
 
-def test_illegal(s):
-    illegal_chars="? ( ) [ ] / \ : ; \" ' , * ^ | & . #".split() + [" "]
-    return reduce(operator.__or__, [c in illegal_chars for c in s])
-
-def readSampleSheetHS4000(ss):
-    bcsByLane={}
-    hdrdict={}
-    fp=open(ss)
-    # skip headers
-    l=fp.readline()
-    while not l.startswith('[Data]'):
-        l=fp.readline()
-    hdrs=fp.readline().strip().split(',')
-    for i, hdr in enumerate(hdrs):
-        hdrdict[hdr.lower()]=i
-
-    isdual='index2' in hdrdict    
-
-    for l in fp:
-        vals=l.strip().split(',')
-        if isdual:
-            bc=vals[hdrdict['index']]+'-'+vals[hdrdict['index2']]
-        else:
-            bc=vals[hdrdict['index']]
-
-        lane=vals[hdrdict['lane']]
-
-        if bc in bcsByLane.setdefault(lane, []):
-            print >> sys.stderr, "ERROR Lane %s had barcode %s listed multiple times.  Please investigate." % (lane, bc)
-            sys.exit(-1)
-        else:
-            bcsByLane.setdefault(lane,[]).append(bc)
-    return bcsByLane
-
-def readSampleSheet(ss):
-    bcsByLane={}
-    fp=open(ss)
-    # skip header
-    fp.readline()
-    for l in fp:
-        fc,lane,sample,ref,bc,desc,control,recipe,operator,project=l.rstrip().split(',')
-        if test_illegal(sample) or test_illegal(project):
-            print >>sys.stderr, "ERROR: illegal character in line: %s" % l
-            sys.exit(-1)
-        if bc in bcsByLane.setdefault(lane, []):
-            print >> sys.stderr, "ERROR Lane %s had barcode %s listed multiple times.  Please investigate." % (lane, bc)
-            sys.exit(-1)
-        else:
-            bcsByLane.setdefault(lane,[]).append(bc)
-    return bcsByLane
+import SSparser
 
 def genFunc(lane, fp):
     def doit():
@@ -84,7 +35,7 @@ def genFunc(lane, fp):
         return base
     return doit
 
-def seqReader(lane, start_cycles, cycles, tilepat, tile, basecalls, compressed):
+def seqReader(lane, bcs, start_cycles, cycles, tilepat, tile, basecalls, compressed):
 
     funclist=[]
 
@@ -163,9 +114,9 @@ if __name__=='__main__':
 
     if options.ss:
         if options.iem:
-            bcs=readSampleSheetHS4000(options.ss)
+            bcs, ok=SSparser.readSampleSheetHS4000(options.ss)
         else:
-            bcs=readSampleSheet(options.ss)
+            bcs, ok=SSparser.readSampleSheet(options.ss)
     else:
         bcs={}
 
@@ -180,7 +131,7 @@ if __name__=='__main__':
         tags={}
         total=0
 
-        for tag in seqReader(lane, start_cycles, num_cycles, options.tilepat, options.tile, options.basecalls, options.compressed):
+        for tag in seqReader(lane, bcs[lane], start_cycles, num_cycles, options.tilepat, options.tile, options.basecalls, options.compressed):
             total+=1
             if tag not in tags:
                 tags[tag]=1
