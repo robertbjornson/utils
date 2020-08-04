@@ -35,11 +35,15 @@ def genFunc(lane, fp):
         return base
     return doit
 
-def seqReader(lane, bcs, start_cycles, cycles, tilepat, tile, basecalls, compressed):
+def seqReader(lane, bcs, start_cycles, cycles, isDual, tilepat, tile, basecalls, compressed):
 
     funclist=[]
 
-    for idx in range(len(start_cycles)):
+    if isDual[lane]:
+        idxs=(0,1)
+    else:
+        idxs=(0,)
+    for idx in idxs:
         for c in range(start_cycles[idx], start_cycles[idx]+cycles[idx]):
             if not compressed:
                 #fp=open('%s/L00%s/C%d.1/s_%s_%s.bcl'%(basecalls, lane, c, lane), 'rb')
@@ -48,7 +52,7 @@ def seqReader(lane, bcs, start_cycles, cycles, tilepat, tile, basecalls, compres
                 fp=gzip.open('%s/L00%s/C%d.1/s_%s_%s.bcl.gz'%(basecalls, lane, c, lane, tile), 'rb')
             fp.read(4) # skip count
             funclist.append(genFunc(lane, fp))
-        if idx < len(start_cycles)-1:
+        if idx < len(idxs)-1:
             funclist.append(lambda : '-')
 
     while True:
@@ -101,12 +105,12 @@ if __name__=='__main__':
     parser.add_argument("-n", "--numcycles", dest="num_cycles_str", type=str, required=True, help="number of barcode cycles")
     parser.add_argument("-t", "--tile", dest="tile", default="1101", help="Tile to use, default %(default)s")
     parser.add_argument("--tilepat", dest="tilepat", default="%(basecalls)s/L00%(lane)s/C%(c)d.1/s_%(lane)s_%(tile)s.bcl", help="Tile to use, default %(default)s")
-    parser.add_argument("-m", "--maxtags", dest="maxtags", default=10, type=int, help="maximum tags to report, default %(default)s")
+    parser.add_argument("-m", "--maxtags", dest="maxtags", default=None, type=int, help="maximum tags to report, default %(default)s")
     parser.add_argument("-l", "--lanes", dest="lanes", default='12345678', type=str, help="lanes to check, default %(default)s")
     parser.add_argument("--numreads", dest="numreads", default=100000, type=int, help="maximum # reads to consult, default %(default)s")
     parser.add_argument("-b", "--basecalls", dest="basecalls", default=".", type=str, help="basecalls dir, default %(default)s")
-    parser.add_argument("-z", "--compressed", action="store_true", dest="compressed", default=False, help="compressed bcl files")
-    parser.add_argument("--iem", action="store_true", dest="iem", default=False, help="Sample Sheet in IEM format (HS4000)")
+    parser.add_argument("--notcompressed", action="store_false", dest="compressed", default=True, help="compressed bcl files")
+    parser.add_argument("--notiem", action="store_false", dest="iem", default=True, help="Sample Sheet in IEM format (HS4000)")
     
     options=parser.parse_args()
 
@@ -114,24 +118,28 @@ if __name__=='__main__':
 
     if options.ss:
         if options.iem:
-            bcs, ok=SSparser.readSampleSheetHS4000(options.ss)
+            bcs, isDual, mindist, samplesPerLane, ok=SSparser.readSampleSheetHS4000(options.ss)
         else:
             bcs, ok=SSparser.readSampleSheet(options.ss)
     else:
         bcs={}
-
-    maxSamplePerLane = max([len(v) for v in bcs.itervalues()])
-    if maxSamplePerLane>=options.maxtags*.75:
-        print >>sys.stderr, "WARNING: Lane seen with %d samples.  Consider increasing maxtags (-m)" % maxSamplePerLane
+    
     start_cycles=[int(e) for e in options.start_cycles_str.split(',')]
     num_cycles=[int(e) for e in options.num_cycles_str.split(',')]
+
+    print "Summary"
+    print "OK? %s" % ok
+    print "Hamming Distances:"
+    for lane in options.lanes:
+        print "%s\t%d" % (lane, mindist[lane])
+    print
 
     for lane in options.lanes:
         expected_found=expected_notfound=found_expected=found_notexpected = 0
         tags={}
         total=0
 
-        for tag in seqReader(lane, bcs[lane], start_cycles, num_cycles, options.tilepat, options.tile, options.basecalls, options.compressed):
+        for tag in seqReader(lane, bcs[lane], start_cycles, num_cycles, isDual, options.tilepat, options.tile, options.basecalls, options.compressed):
             total+=1
             if tag not in tags:
                 tags[tag]=1
@@ -139,7 +147,11 @@ if __name__=='__main__':
                 tags[tag]+=1
             if total >= options.numreads: break
             
-        sortedtags=sorted([[cnt, tag]  for tag, cnt in tags.iteritems()], reverse=True)[:options.maxtags]
+        if options.maxtags:
+            report=options.maxtags
+        else:
+            report=int(samplesPerLane[lane]*1.5)
+        sortedtags=sorted([[cnt, tag]  for tag, cnt in tags.iteritems()], reverse=True)[:report]
         foundtags=[tag for cnt,tag in sortedtags]
         print "Lane %s" % lane
         if lane in bcs:
