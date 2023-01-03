@@ -23,6 +23,7 @@ def conv(v):
 
 sumData={}
 sumMeta={}
+sumCnt={}
 
 import sys
 
@@ -31,9 +32,10 @@ for l in open(sys.argv[1]).readlines()[2:]:
   if status != 'Valid': continue
   data = conv(data)
   meta = conv(meta)
+  sumCnt[fileset]=sumCnt.get(fileset, 0)+1
   sumData[fileset]=sumData.get(fileset, 0.0)+data    
   sumMeta[fileset]=sumMeta.get(fileset, 0.0)+meta
 
 for fs in sumData:
-  print("%s\t%f\t%f" % (fs, sumData[fs], sumMeta[fs]))
+  print("%s\t%d\t%f\t%f" % (fs, sumCnt[fs], sumData[fs], sumMeta[fs]))
 
